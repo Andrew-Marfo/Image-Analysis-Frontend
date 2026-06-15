@@ -1,115 +1,146 @@
 # Image-to-IMDB — Frontend
 
-AI-driven tool that auto-fills **Item Master Database (IMDB)** records from product
-images. Built for the **GDSS-Maverick Hackathon**.
+React web app for the Image-to-IMDB pipeline. Authenticated users upload
+product images, review AI-extracted attributes, browse and edit all records,
+and export a submission-ready CSV/XLSX.
 
-Upload product photos → an image-analysis pipeline extracts the product attributes →
-preview, edit, and flag low-confidence fields → export a CSV/XLSX ready for product-master
-database upload.
+## Pages
 
-> This repository is the **React frontend**. The image-analysis backend is a separate
-> service; until it is connected the app runs against a built-in **mock extraction
-> service** so the full flow is demoable.
+### Upload
+Drag and drop product images. Images are grouped into products by filename
+prefix (3–4 angles per product). The AI extracts all 13 IMDB fields per image
+and combines results by picking the highest-confidence value per field across
+the group.
 
-## What this part of the project is
+### Review (within Upload flow)
+Extracted fields shown per product. Low-confidence or empty-but-expected fields
+are highlighted in amber for human attention and are inline-editable. Every edit
+is saved to the backend in real time (`PATCH /api/v1/records/{id}`).
 
-The overall product has two parts:
+If the AI detects that a product already exists in the database, a plain-language
+message appears above the card:
 
-- **Backend / ML pipeline** (separate, built by teammates) — receives product images and
-  runs the image-analysis pipeline (VLM / OCR / multi-model) to extract the IMDB attributes.
-- **Frontend (this repository)** — the user-facing web app that handles image upload,
-  presents and lets users review/edit the extracted attributes, flags low-confidence
-  values for human attention, and exports the final CSV/XLSX for database upload.
+> _"[Product name] was already entered on [date] with ID #[id].
+> Verify records to confirm, or continue with this extraction."_
 
-The two communicate through a single, well-defined API boundary
-([`src/api/client.ts`](src/api/client.ts)), so the frontend was built and verified
-independently against a mock and can be pointed at the real backend without UI changes.
+Actions: **Verify Records** (go to Records tab) · **Continue Extraction** (keep
+the new record) · **Merge into existing** (absorb new fields into the older record).
 
-## Workflow
+### Export (within Upload flow)
+Live preview of the output table. Downloads the session's records from the
+backend as CSV or XLSX with the exact 13 IMDB columns in submission order.
 
-`Upload → Preview → Edit → Export`
+### Records
+Browses all records in the database across all users.
 
-1. **Upload** — drag & drop product images. Images are grouped into one product per
-   filename prefix (a product has 3–4 angles).
-2. **Preview & Edit** — extracted attributes shown per product; low-confidence or
-   expected-but-empty fields are flagged in amber for human review and are inline-editable.
-3. **Export** — download `predictions.csv` or `predictions.xlsx` with the exact 13 IMDB
-   columns in submission order.
+- **Summary bar:** today's date, total record count, latest record highlighted.
+- **Filters:** brand, category, date range (today / 7 days / 30 days / all),
+  needs-review toggle.
+- **Per-row actions:** edit (pencil icon opens a modal with all 13 fields) and
+  delete (with confirmation).
+- **Find Duplicates:** scans all records for fuzzy matches and presents them
+  side-by-side with **Merge** and **Dismiss** actions.
+- **Export:** download all visible records as CSV or XLSX.
 
-## The 13 IMDB columns
+## Authentication
 
-`ITEM_NAME · BARCODE · MANUFACTURER · BRAND · WEIGHT · PACKAGING TYPE · COUNTRY · VARIANT ·
-TYPE · FRAGRANCE_FLAVOR · PROMOTION · ADDONS · TAGLINE`
+JWT-based. The login/register page uses a split-panel layout — a dark feature
+panel on the left and a form on the right. Tokens are stored in `localStorage`
+and automatically refreshed on 401. The logged-in user's name and sign-out
+button appear in the top navigation bar.
 
-Defined once in [`src/lib/columns.ts`](src/lib/columns.ts) — the single source of truth for
-the UI grid and the export. Fields that can't be confidently extracted are left empty
-(never guessed).
+## Extraction modes
 
-## Status — what's been done
+The `api` object in `src/api/client.ts` selects the active mode at build time:
 
-- [x] Project scaffolding: Vite + React 19 + TypeScript + Tailwind CSS v4, ESLint.
-- [x] IMDB data model and the 13 columns as a single source of truth for UI + export.
-- [x] `ImageAnalysisApi` interface with one swap point, plus a mock extraction service
-      seeded from the sample products for an end-to-end demo.
-- [x] **Upload** step: drag-and-drop multi-image upload, auto-grouping of images into
-      products by filename prefix, per-product thumbnails and removal.
-- [x] **Preview & Edit** step: per-product cards with all 13 fields inline-editable;
-      low-confidence and expected-but-empty fields flagged in amber with confidence
-      indicators; per-product "mark reviewed" toggle and a review summary.
-- [x] **Export** step: live output-table preview + working CSV and (lazy-loaded) XLSX
-      download with the exact 13 columns in submission order and empty strings for unknowns.
-- [x] Responsive layout (works on web and mobile widths) and step navigation.
-- [x] AWS Amplify build config (`amplify.yml`) and project documentation.
-- [x] Verified: production build + lint pass; full flow driven end-to-end with the sample
-      images (no console errors); CSV/XLSX downloads confirmed valid.
+| Priority | Condition | Mode |
+|---|---|---|
+| 1 | `VITE_API_BASE_URL` is set | **Backend API** — records saved to DB + S3 |
+| 2 | `VITE_GEMINI_API_KEY` is set | **Direct Gemini** — real extraction, no DB |
+| 3 | Neither set | **Mock service** — offline demo with seeded data |
 
-## Roadmap — what's left to do
+## Environment variables
 
-- [ ] **Wire the real backend**: implement an HTTP-backed `ImageAnalysisApi` against the
-      teammates' endpoint and switch `api` over (see "Connecting the real backend" below).
-- [ ] **Upload UX**: surface per-image extraction errors/retries and an overall progress
-      state for large batches; allow manual re-grouping (merge/split) of images.
-- [ ] **Duplicate / merge suggestions** (bonus from the brief): flag likely-duplicate
-      products by matching barcode / brand / weight against existing records.
-- [ ] **Standardised naming**: dropdowns / normalisation for brand, category, segment, and
-      packaging to reduce duplication on import.
-- [ ] **Authentication** (deferred): add AWS Cognito sign-in if required for the demo.
-- [ ] **Persistence**: optionally save sessions so work survives a page refresh.
-- [ ] **Tests**: unit tests for grouping, confidence flagging, and CSV/XLSX export; a smoke
-      test for the full flow.
-- [ ] **Deploy**: connect the repo in the AWS Amplify console and ship a live demo URL.
+Create a `.env` file in this directory:
 
-## Tech stack
+```bash
+# Connect to the FastAPI backend (recommended)
+VITE_API_BASE_URL=http://localhost:8000
 
-- **Vite + React 19 + TypeScript**
-- **Tailwind CSS v4**
-- **ExcelJS** for XLSX export (lazy-loaded), native CSV writer
-- **lucide-react** icons
+# Direct Gemini Flash mode (no backend needed)
+VITE_GEMINI_API_KEY=<your-google-ai-studio-key>
+VITE_GEMINI_MODEL=gemini-2.0-flash
+```
+
+Both variables can coexist — `VITE_API_BASE_URL` takes priority.
 
 ## Getting started
 
+Requires **Node 20+**. If you use nvm: `nvm use 20`.
+
 ```bash
 npm install
-npm run dev      # local dev server
-npm run build    # type-check + production build to dist/
-npm run preview  # preview the production build
+npm run dev        # dev server at http://localhost:5173
+npm run build      # type-check + production build → dist/
+npm run preview    # preview the production build
 ```
 
-## Connecting the real backend
+## Tech stack
 
-All extraction goes through the `api` object in
-[`src/api/client.ts`](src/api/client.ts), which implements the `ImageAnalysisApi`
-interface. To switch from the mock to the real service:
+| Library | Purpose |
+|---|---|
+| React 19 + TypeScript + Vite 8 | UI framework and build tooling |
+| Tailwind CSS v4 | Styling with `bg-brand-*` custom colour scale |
+| lucide-react | Icons |
+| ExcelJS (lazy-loaded) | XLSX generation |
+| Google Gemini REST API | Direct browser extraction (no SDK) |
 
-1. Set `VITE_API_BASE_URL` (see [`.env.example`](.env.example)).
-2. Implement an HTTP-backed `ImageAnalysisApi` and assign it to `api`.
+## Project layout
 
-Nothing in the UI needs to change.
+```
+src/
+  api/
+    client.ts          Auth, HTTP extraction, PATCH, records, dedup/merge, export
+    geminiService.ts   Direct Gemini Flash extraction from the browser
+    mockService.ts     Seeded mock for offline demo
+  store/
+    AuthStore.tsx      JWT session context (login, register, logout, auto-refresh)
+    NavStore.tsx        Upload / Records page switching
+    AppStore.tsx        Upload workflow state (products, steps, field edits)
+  types/
+    imdb.ts            Product, FieldValue, ImdbFieldKey, WorkflowStep
+  lib/
+    columns.ts         Single source of truth for the 13 IMDB columns
+    confidence.ts      Low-confidence threshold helpers
+    export.ts          Local CSV / XLSX generation (mock/direct mode)
+    grouping.ts        Group uploaded files by filename prefix
+  components/
+    Header.tsx         2-row navbar (dark top bar + Upload/Records tabs)
+    Stepper.tsx        Upload workflow step indicator
+    auth/
+      AuthPage.tsx     Split-panel login / register
+    upload/
+      UploadStep.tsx   Drag-and-drop zone
+      Dropzone.tsx
+      ProductImageGroup.tsx
+    review/
+      ReviewStep.tsx   Per-product field editor + duplicate warning banner
+      ProductCard.tsx
+      FieldEditor.tsx
+    export/
+      ExportStep.tsx   Output preview + CSV/XLSX download
+      DataTablePreview.tsx
+    records/
+      RecordsPage.tsx       Records browser with filters, edit, delete, export
+      RecordEditModal.tsx   Modal editor for all 13 fields
+      DedupPanel.tsx        Duplicate candidates panel with merge/dismiss actions
+    ui/
+      Button.tsx
+```
 
-## Deployment (AWS Amplify Hosting)
+## Deployment (AWS Amplify)
 
-[`amplify.yml`](amplify.yml) defines the build: `npm ci` → `npm run build`, publishing the
-`dist/` directory. Connect the repo in the Amplify console and set any `VITE_*` environment
-variables there. The app is currently a single page (no client-side router), so no SPA
-rewrite rule is required; add one (`/<*> → /index.html`, 200) in the console if routing is
-introduced later.
+`amplify.yml` defines the build: `npm ci` → `npm run build`, publishing `dist/`.
+Set `VITE_API_BASE_URL` and any other `VITE_*` variables in the Amplify console
+environment settings. The app is a single page — add a rewrite rule
+(`/<*> → /index.html`, 200) in the Amplify console if client-side routing is added.
