@@ -11,6 +11,20 @@ database upload.
 > service; until it is connected the app runs against a built-in **mock extraction
 > service** so the full flow is demoable.
 
+## What this part of the project is
+
+The overall product has two parts:
+
+- **Backend / ML pipeline** (separate, built by teammates) — receives product images and
+  runs the image-analysis pipeline (VLM / OCR / multi-model) to extract the IMDB attributes.
+- **Frontend (this repository)** — the user-facing web app that handles image upload,
+  presents and lets users review/edit the extracted attributes, flags low-confidence
+  values for human attention, and exports the final CSV/XLSX for database upload.
+
+The two communicate through a single, well-defined API boundary
+([`src/api/client.ts`](src/api/client.ts)), so the frontend was built and verified
+independently against a mock and can be pointed at the real backend without UI changes.
+
 ## Workflow
 
 `Upload → Preview → Edit → Export`
@@ -30,6 +44,40 @@ TYPE · FRAGRANCE_FLAVOR · PROMOTION · ADDONS · TAGLINE`
 Defined once in [`src/lib/columns.ts`](src/lib/columns.ts) — the single source of truth for
 the UI grid and the export. Fields that can't be confidently extracted are left empty
 (never guessed).
+
+## Status — what's been done
+
+- [x] Project scaffolding: Vite + React 19 + TypeScript + Tailwind CSS v4, ESLint.
+- [x] IMDB data model and the 13 columns as a single source of truth for UI + export.
+- [x] `ImageAnalysisApi` interface with one swap point, plus a mock extraction service
+      seeded from the sample products for an end-to-end demo.
+- [x] **Upload** step: drag-and-drop multi-image upload, auto-grouping of images into
+      products by filename prefix, per-product thumbnails and removal.
+- [x] **Preview & Edit** step: per-product cards with all 13 fields inline-editable;
+      low-confidence and expected-but-empty fields flagged in amber with confidence
+      indicators; per-product "mark reviewed" toggle and a review summary.
+- [x] **Export** step: live output-table preview + working CSV and (lazy-loaded) XLSX
+      download with the exact 13 columns in submission order and empty strings for unknowns.
+- [x] Responsive layout (works on web and mobile widths) and step navigation.
+- [x] AWS Amplify build config (`amplify.yml`) and project documentation.
+- [x] Verified: production build + lint pass; full flow driven end-to-end with the sample
+      images (no console errors); CSV/XLSX downloads confirmed valid.
+
+## Roadmap — what's left to do
+
+- [ ] **Wire the real backend**: implement an HTTP-backed `ImageAnalysisApi` against the
+      teammates' endpoint and switch `api` over (see "Connecting the real backend" below).
+- [ ] **Upload UX**: surface per-image extraction errors/retries and an overall progress
+      state for large batches; allow manual re-grouping (merge/split) of images.
+- [ ] **Duplicate / merge suggestions** (bonus from the brief): flag likely-duplicate
+      products by matching barcode / brand / weight against existing records.
+- [ ] **Standardised naming**: dropdowns / normalisation for brand, category, segment, and
+      packaging to reduce duplication on import.
+- [ ] **Authentication** (deferred): add AWS Cognito sign-in if required for the demo.
+- [ ] **Persistence**: optionally save sessions so work survives a page refresh.
+- [ ] **Tests**: unit tests for grouping, confidence flagging, and CSV/XLSX export; a smoke
+      test for the full flow.
+- [ ] **Deploy**: connect the repo in the AWS Amplify console and ship a live demo URL.
 
 ## Tech stack
 
