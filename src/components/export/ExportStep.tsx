@@ -10,47 +10,42 @@ import { useAppStore } from '../../store/AppStore';
 import { IMDB_COLUMNS } from '../../lib/columns';
 import { flaggedCount } from '../../lib/confidence';
 import { downloadCsv, downloadXlsx } from '../../lib/export';
-import { apiExportBlob, USE_REAL_API } from '../../api/client';
+import { apiExportBlob, BACKEND_EXPORT_COLUMNS, USE_REAL_API } from '../../api/client';
 import { Button } from '../ui/Button';
+import { ColumnPicker } from '../ui/ColumnPicker';
 import { DataTablePreview } from './DataTablePreview';
+
+const LOCAL_COLUMNS = IMDB_COLUMNS.map((c) => ({ key: c.header, label: c.label }));
 
 export function ExportStep() {
   const { products, setStep, reset } = useAppStore();
   const [exporting, setExporting] = useState<null | 'csv' | 'xlsx'>(null);
-
-  const totalFlagged = products.reduce((n, p) => n + flaggedCount(p), 0);
-  const unreviewed = products.filter((p) => !p.reviewed).length;
   const useBackend = USE_REAL_API && products.some((p) => p.recordId != null);
   const sessionId = products.find((p) => p.sessionId != null)?.sessionId;
 
-  async function handleCsv() {
-    setExporting('csv');
-    try {
-      if (useBackend) {
-        const blob = await apiExportBlob('csv', sessionId);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'imdb-export.csv'; a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        await downloadCsv(products);
-      }
-    } finally {
-      setExporting(null);
-    }
-  }
+  const availableCols = useBackend ? BACKEND_EXPORT_COLUMNS : LOCAL_COLUMNS;
+  const [selectedCols, setSelectedCols] = useState<Set<string>>(
+    () => new Set(availableCols.map((c) => c.key)),
+  );
 
-  async function handleXlsx() {
-    setExporting('xlsx');
+  const totalFlagged = products.reduce((n, p) => n + flaggedCount(p), 0);
+  const unreviewed = products.filter((p) => !p.reviewed).length;
+
+  async function handleExport(fmt: 'csv' | 'xlsx') {
+    setExporting(fmt);
     try {
+      const cols = [...selectedCols];
       if (useBackend) {
-        const blob = await apiExportBlob('xlsx', sessionId);
+        const blob = await apiExportBlob(fmt, sessionId, cols);
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'imdb-export.xlsx'; a.click();
+        a.href = url;
+        a.download = `imdb-export.${fmt}`;
+        a.click();
         URL.revokeObjectURL(url);
       } else {
-        await downloadXlsx(products);
+        if (fmt === 'csv') await downloadCsv(products, 'predictions.csv', cols);
+        else await downloadXlsx(products, 'predictions.xlsx', cols);
       }
     } finally {
       setExporting(null);
@@ -62,8 +57,9 @@ export function ExportStep() {
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-semibold text-slate-900">Export IMDB records</h2>
         <p className="mt-1 text-sm text-slate-500">
-          {products.length} product{products.length !== 1 && 's'} · {IMDB_COLUMNS.length}{' '}
-          columns, in submission order. Empty cells are exported as empty strings.
+          {products.length} product{products.length !== 1 && 's'} ·{' '}
+          {selectedCols.size} of {availableCols.length} columns selected.
+          Empty cells are exported as empty strings.
         </p>
 
         {(totalFlagged > 0 || unreviewed > 0) && (
@@ -77,29 +73,32 @@ export function ExportStep() {
                 </>
               )}
               {totalFlagged > 0 && (
-                <>
-                  {totalFlagged} field{totalFlagged !== 1 && 's'} still flagged
-                </>
+                <>{totalFlagged} field{totalFlagged !== 1 && 's'} still flagged</>
               )}
               . You can still export — review is optional.
             </span>
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button size="lg" onClick={handleXlsx} disabled={exporting !== null}>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button size="lg" onClick={() => handleExport('xlsx')} disabled={exporting !== null || selectedCols.size === 0}>
             <FileSpreadsheet className="h-4 w-4" />
-            {exporting === 'xlsx' ? 'Preparing…' : 'Download predictions.xlsx'}
+            {exporting === 'xlsx' ? 'Preparing…' : 'Download XLSX'}
           </Button>
           <Button
             size="lg"
             variant="secondary"
-            onClick={handleCsv}
-            disabled={exporting !== null}
+            onClick={() => handleExport('csv')}
+            disabled={exporting !== null || selectedCols.size === 0}
           >
             <FileText className="h-4 w-4" />
-            {exporting === 'csv' ? 'Preparing…' : 'Download predictions.csv'}
+            {exporting === 'csv' ? 'Preparing…' : 'Download CSV'}
           </Button>
+          <ColumnPicker
+            columns={availableCols}
+            selected={selectedCols}
+            onChange={setSelectedCols}
+          />
         </div>
       </div>
 

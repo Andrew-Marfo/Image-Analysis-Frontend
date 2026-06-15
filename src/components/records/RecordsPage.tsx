@@ -4,9 +4,10 @@ import {
 } from 'lucide-react';
 import {
   apiDeleteRecord, apiExportBlob, apiGetRecords, apiRunDedup,
-  type MergeCandidate, type RecordOut,
+  BACKEND_EXPORT_COLUMNS, type MergeCandidate, type RecordOut,
 } from '../../api/client';
 import { useAuth } from '../../store/AuthStore';
+import { ColumnPicker } from '../ui/ColumnPicker';
 import { RecordEditModal } from './RecordEditModal';
 import { DedupPanel } from './DedupPanel';
 
@@ -45,6 +46,9 @@ export function RecordsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState<null | 'csv' | 'xlsx'>(null);
+  const [selectedCols, setSelectedCols] = useState<Set<string>>(
+    () => new Set(BACKEND_EXPORT_COLUMNS.map((c) => c.key)),
+  );
 
   const [brandFilter, setBrandFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -84,7 +88,7 @@ export function RecordsPage() {
   async function handleExport(fmt: 'csv' | 'xlsx') {
     setExporting(fmt);
     try {
-      const blob = await apiExportBlob(fmt);
+      const blob = await apiExportBlob(fmt, undefined, [...selectedCols]);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -177,7 +181,7 @@ export function RecordsPage() {
           <button
             type="button"
             onClick={() => void handleExport('xlsx')}
-            disabled={exporting !== null || visible.length === 0}
+            disabled={exporting !== null || visible.length === 0 || selectedCols.size === 0}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
           >
             <Download className="h-4 w-4 text-green-600" />
@@ -186,12 +190,17 @@ export function RecordsPage() {
           <button
             type="button"
             onClick={() => void handleExport('csv')}
-            disabled={exporting !== null || visible.length === 0}
+            disabled={exporting !== null || visible.length === 0 || selectedCols.size === 0}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
           >
             <Download className="h-4 w-4 text-blue-600" />
             {exporting === 'csv' ? 'Exporting…' : 'Export CSV'}
           </button>
+          <ColumnPicker
+            columns={BACKEND_EXPORT_COLUMNS}
+            selected={selectedCols}
+            onChange={setSelectedCols}
+          />
           <button
             type="button"
             onClick={() => void load()}

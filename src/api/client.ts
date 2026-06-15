@@ -274,9 +274,38 @@ export async function apiMergeRecords(keepId: number, mergeId: number): Promise<
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-export async function apiExportBlob(format: 'csv' | 'xlsx', sessionId?: number): Promise<Blob> {
+/** All columns the backend can export, in order. */
+export const BACKEND_EXPORT_COLUMNS: { key: string; label: string }[] = [
+  { key: 'RECORD_ID',        label: 'Record ID' },
+  { key: 'SESSION_ID',       label: 'Session ID' },
+  { key: 'ITEM_NAME',        label: 'Item Name' },
+  { key: 'BARCODE',          label: 'Barcode' },
+  { key: 'MANUFACTURER',     label: 'Manufacturer' },
+  { key: 'BRAND',            label: 'Brand' },
+  { key: 'WEIGHT',           label: 'Weight' },
+  { key: 'PACKAGING_TYPE',   label: 'Packaging Type' },
+  { key: 'COUNTRY',          label: 'Country' },
+  { key: 'CATEGORY_TYPE',    label: 'Category Type' },
+  { key: 'SEGMENT_TYPE',     label: 'Segment Type' },
+  { key: 'VARIANT_TYPE',     label: 'Variant Type' },
+  { key: 'FRAGRANCE_FLAVOR', label: 'Fragrance / Flavor' },
+  { key: 'PROMOTION',        label: 'Promotion' },
+  { key: 'ADDONS',           label: 'Add-ons' },
+  { key: 'TAGLINE',          label: 'Tagline' },
+  { key: 'NEEDS_REVIEW',     label: 'Needs Review' },
+  { key: 'UPLOADED_AT',      label: 'Uploaded At' },
+];
+
+export async function apiExportBlob(
+  format: 'csv' | 'xlsx',
+  sessionId?: number,
+  columns?: string[],
+): Promise<Blob> {
   const params = new URLSearchParams({ format });
   if (sessionId != null) params.set('session_id', String(sessionId));
+  if (columns?.length) {
+    for (const c of columns) params.append('columns', c);
+  }
   const res = await apiFetch(`/api/v1/export?${params.toString()}`);
   if (!res.ok) throw new Error('Export failed');
   return res.blob();
