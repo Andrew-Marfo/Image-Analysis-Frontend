@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  CalendarDays, Download, RefreshCw, Search, SlidersHorizontal, Star, Trash2, X,
+  CalendarDays, Download, Pencil, RefreshCw, Search, SlidersHorizontal, Star, Trash2, X,
 } from 'lucide-react';
 import {
   apiDeleteRecord, apiExportBlob, apiGetRecords, type RecordOut,
 } from '../../api/client';
 import { useAuth } from '../../store/AuthStore';
+import { RecordEditModal } from './RecordEditModal';
 
 type DateRange = 'today' | 'week' | 'month' | 'all';
 
@@ -50,6 +51,7 @@ export function RecordsPage() {
 
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editRecord, setEditRecord] = useState<RecordOut | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,6 +92,10 @@ export function RecordsPage() {
     } finally {
       setExporting(null);
     }
+  }
+
+  function handleSaved(updated: RecordOut) {
+    setAll((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
   }
 
   async function handleDelete(id: number) {
@@ -275,7 +281,7 @@ export function RecordsPage() {
                 <th className="px-4 py-3 text-left">Country</th>
                 <th className="px-4 py-3 text-left">Created</th>
                 <th className="px-4 py-3 text-left">Review</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3 text-left">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -309,40 +315,58 @@ export function RecordsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {confirmDelete === r.id ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          disabled={deleting}
-                          onClick={() => void handleDelete(r.id)}
-                          className="rounded bg-red-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDelete(null)}
-                          className="rounded border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => setConfirmDelete(r.id)}
-                        className="rounded p-1 text-slate-300 transition hover:bg-red-50 hover:text-red-500"
-                        title="Delete record"
+                        onClick={() => setEditRecord(r)}
+                        className="rounded p-1 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600"
+                        title="Edit record"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </button>
-                    )}
+                      {confirmDelete === r.id ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={deleting}
+                            onClick={() => void handleDelete(r.id)}
+                            className="rounded bg-red-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDelete(null)}
+                            className="rounded border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDelete(r.id)}
+                          className="rounded p-1 text-slate-300 transition hover:bg-red-50 hover:text-red-500"
+                          title="Delete record"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {editRecord && (
+        <RecordEditModal
+          record={editRecord}
+          onClose={() => setEditRecord(null)}
+          onSaved={handleSaved}
+        />
       )}
     </main>
   );
