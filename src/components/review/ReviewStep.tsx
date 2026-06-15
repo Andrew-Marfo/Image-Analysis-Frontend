@@ -1,37 +1,47 @@
-import { ArrowLeft, ArrowRight, Copy, FileDown, ShieldCheck, X } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, ArrowRight, FileDown, Loader2, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/AppStore';
 import { apiGetRecords, apiMergeRecords } from '../../api/client';
-import type { MergeCandidate, RecordOut } from '../../api/client';
+import type { RecordOut } from '../../api/client';
 import type { Product } from '../../types/imdb';
 import { flaggedCount } from '../../lib/confidence';
 import { useNav } from '../../store/NavStore';
 import { Button } from '../ui/Button';
 import { ProductCard } from './ProductCard';
 
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+}
+
 function DuplicateWarning({ product, onDismiss }: { product: Product; onDismiss: () => void }) {
   const { setPage } = useNav();
   const [merging, setMerging] = useState(false);
-  const [matchRecord, setMatchRecord] = useState<RecordOut | null>(null);
-  const [loadingMatch, setLoadingMatch] = useState(false);
+  const [match, setMatch] = useState<RecordOut | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const candidates = product.dedupCandidates ?? [];
-  if (!candidates.length) return null;
+  const top = candidates[0];
+  if (!top) return null;
 
-  // Highest-confidence candidate
-  const top: MergeCandidate = candidates[0];
   const existingId = top.duplicate_of === product.recordId ? top.record_id : top.duplicate_of;
+  const isExact = top.score >= 1.0;
+  const confidence = Math.round(top.score * 100);
 
-  async function loadMatch() {
-    if (matchRecord || loadingMatch) return;
-    setLoadingMatch(true);
-    try {
-      const { records } = await apiGetRecords({ limit: 200 });
-      setMatchRecord(records.find((r) => r.id === existingId) ?? null);
-    } finally {
-      setLoadingMatch(false);
-    }
-  }
+  // Load existing record details on mount
+  useEffect(() => {
+    apiGetRecords({ limit: 200 })
+      .then(({ records }) => setMatch(records.find((r) => r.id === existingId) ?? null))
+      .catch(() => setMatch(null))
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingId]);
+
+  const productLabel = match
+    ? (match.item_name ?? match.brand ?? `Record #${existingId}`)
+    : `Record #${existingId}`;
+  const enteredOn = match ? fmtDate(match.created_at) : '—';
 
   async function handleMerge() {
     if (!product.recordId) return;
@@ -44,64 +54,60 @@ function DuplicateWarning({ product, onDismiss }: { product: Product; onDismiss:
     }
   }
 
-  const scoreLabel = top.score >= 1.0 ? 'Exact match' : top.score >= 0.92 ? 'Very likely duplicate' : 'Possible duplicate';
-  const scorePct   = Math.round(top.score * 100);
-
   return (
-    <div
-      className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm"
-      onMouseEnter={loadMatch}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <Copy className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <div>
-            <p className="font-semibold text-amber-900">
-              {scoreLabel} ({scorePct}%) — {top.reason}
-            </p>
-            <p className="mt-0.5 text-amber-700">
-              Matched fields: <span className="font-medium">{top.matched_fields.join(', ')}</span>
-            </p>
-            {matchRecord && (
-              <p className="mt-1 text-amber-800">
-                Existing record #{existingId}:&nbsp;
-                <span className="font-medium">
-                  {matchRecord.item_name ?? matchRecord.brand ?? '(unnamed)'}
-                </span>
-                {matchRecord.weight && ` · ${matchRecord.weight}`}
-              </p>
-            )}
+    <div className="rounded-xl border border-amber-300 bg-amber-50">
+      {/* Main message */}
+      <div className="px-4 py-4">
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-amber-700">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Checking existing records…
           </div>
-        </div>
-        <button type="button" onClick={onDismiss} className="text-amber-500 hover:text-amber-700">
-          <X className="h-4 w-4" />
-        </button>
+        ) : (
+          <>
+            <p className="text-sm text-amber-900 leading-relaxed">
+              <span className="font-semibold">"{productLabel}"</span> was already entered on{' '}
+              <span className="font-semibold">{enteredOn}</span> with ID{' '}
+              <span className="font-semibold">#{existingId}</span>
+              {!isExact && (
+                <span className="text-amber-600"> ({confidence}% match)</span>
+              )}.
+            </p>
+            <p className="mt-1 text-sm text-amber-700">
+              Verify records to confirm, or continue with this extraction.
+            </p>
+          </>
+        )}
       </div>
 
-      {product.recordId && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleMerge}
-            disabled={merging}
-            className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
-          >
-            {merging ? 'Merging…' : 'Merge into existing'}
-          </button>
+      {/* Actions */}
+      {!loading && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-amber-200 bg-amber-100/50 px-4 py-3">
           <button
             type="button"
             onClick={() => setPage('records')}
-            className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50"
+            className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-700"
           >
-            View in Records
+            Verify Records
           </button>
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50"
+            className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-50"
           >
-            Keep as new record
+            Continue Extraction
           </button>
+          {product.recordId && (
+            <button
+              type="button"
+              onClick={handleMerge}
+              disabled={merging}
+              className="ml-auto flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-50"
+            >
+              {merging && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {merging ? 'Merging…' : 'Merge into existing'}
+            </button>
+          )}
         </div>
       )}
     </div>
