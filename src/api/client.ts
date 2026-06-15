@@ -287,6 +287,7 @@ export interface ExtractionResult {
   fields: Record<ImdbFieldKey, ExtractedField>;
   recordId?: number;
   sessionId?: number;
+  dedupCandidates?: MergeCandidate[];
 }
 
 export interface ImageAnalysisApi {
@@ -302,8 +303,8 @@ class HttpAnalysisApi implements ImageAnalysisApi {
       const body = await res.json();
       throw new Error(typeof body.detail === 'string' ? body.detail : 'Extraction failed');
     }
-    const data = (await res.json()) as { session_id: number; records: RecordOut[] };
-    return recordsToResult(data.records);
+    const data = (await res.json()) as { session_id: number; records: RecordOut[]; dedup_candidates: MergeCandidate[] };
+    return { ...recordsToResult(data.records), dedupCandidates: data.dedup_candidates ?? [] };
   }
 }
 

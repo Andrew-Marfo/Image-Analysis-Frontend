@@ -62,6 +62,8 @@ export interface Product {
   recordId?: number;
   /** Backend session id (set after successful extraction). */
   sessionId?: number;
+  /** Duplicate candidates detected automatically at upload time. */
+  dedupCandidates?: import('../api/client').MergeCandidate[];
 }
 
 /** The three steps of the upload → preview/edit → export workflow. */

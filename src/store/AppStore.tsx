@@ -132,6 +132,7 @@ function reducer(state: State, action: Action): State {
             ...p, fields, status: 'done', error: undefined,
             recordId: action.result.recordId,
             sessionId: action.result.sessionId,
+            dedupCandidates: action.result.dedupCandidates,
           };
         }),
       };
