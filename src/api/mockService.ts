@@ -28,8 +28,9 @@ const SEEDS: Record<string, Seed> = {
     WEIGHT: f('100G', 0.91),
     PACKAGING_TYPE: f('BOX', 0.66),
     COUNTRY: f('', 0.15),
-    VARIANT: f('', 0),
-    TYPE: f('SOAP', 0.9),
+    CATEGORY_TYPE: f('SOAP', 0.9),
+    SEGMENT_TYPE: f('', 0),
+    VARIANT_TYPE: f('', 0),
     FRAGRANCE_FLAVOR: f('ROSE', 0.88),
     PROMOTION: f('', 0),
     ADDONS: f('', 0),
@@ -44,8 +45,9 @@ const SEEDS: Record<string, Seed> = {
     WEIGHT: f('', 0.35),
     PACKAGING_TYPE: f('SACHET', 0.94),
     COUNTRY: f('', 0.2),
-    VARIANT: f('STEW', 0.7),
-    TYPE: f('SEASONING POWDER', 0.86),
+    CATEGORY_TYPE: f('SEASONING POWDER', 0.86),
+    SEGMENT_TYPE: f('', 0),
+    VARIANT_TYPE: f('STEW', 0.7),
     FRAGRANCE_FLAVOR: f('', 0.3),
     PROMOTION: f('', 0),
     ADDONS: f('', 0),
@@ -58,7 +60,7 @@ const SEEDS: Record<string, Seed> = {
     BRAND: f('', 0.45),
     WEIGHT: f('', 0.3),
     PACKAGING_TYPE: f('', 0.5),
-    TYPE: f('', 0.4),
+    CATEGORY_TYPE: f('', 0.4),
   },
 };
 
@@ -70,7 +72,7 @@ function genericResult(fileName: string): Seed {
     BRAND: f('', 0.4),
     WEIGHT: f('', 0.35),
     PACKAGING_TYPE: f('', 0.45),
-    TYPE: f('', 0.4),
+    CATEGORY_TYPE: f('', 0.4),
   };
 }
 

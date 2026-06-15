@@ -16,8 +16,9 @@ interface FormState {
   weight: string;
   packaging_type: string;
   country_of_origin: string;
-  variant_type: string;
   category_type: string;
+  segment_type: string;
+  variant_type: string;
   fragrance_flavor: string;
   promotion: string;
   addons: string;
@@ -31,7 +32,8 @@ const FIELDS: { key: keyof FormState; label: string; span?: boolean }[] = [
   { key: 'barcode',          label: 'Barcode' },
   { key: 'weight',           label: 'Weight (e.g. 250g)' },
   { key: 'packaging_type',   label: 'Packaging Type' },
-  { key: 'category_type',    label: 'Category' },
+  { key: 'category_type',    label: 'Category Type' },
+  { key: 'segment_type',     label: 'Segment Type' },
   { key: 'country_of_origin',label: 'Country of Origin' },
   { key: 'variant_type',     label: 'Variant' },
   { key: 'fragrance_flavor', label: 'Fragrance / Flavor' },
@@ -63,8 +65,9 @@ function toForm(r: RecordOut): FormState {
     weight:            r.weight ?? '',
     packaging_type:    r.packaging_type ?? '',
     country_of_origin: r.country_of_origin ?? '',
-    variant_type:      r.variant_type ?? '',
     category_type:     r.category_type ?? '',
+    segment_type:      r.segment_type ?? '',
+    variant_type:      r.variant_type ?? '',
     fragrance_flavor:  r.fragrance_flavor ?? '',
     promotion:         r.promotion ?? '',
     addons:            r.addons ?? '',

@@ -26,12 +26,13 @@ the following attributes from any visible labels, packaging, and logos:
 - weight_raw: the net weight/volume EXACTLY as printed (e.g. "250 g", "1.5L")
 - packaging_type: container type (Bottle, Can, Sachet, Box, Pouch, Tub, Glass Jar, etc.)
 - country_of_origin: country shown (e.g. "Made in ..."), else null
+- category_type: high-level product category (e.g. Spreads, Condiments, Beverages)
+- segment_type: market segment shown or implied on pack (e.g. Premium, Value, Economy, Mainstream), else null
 - variant_type: the product variant (e.g. ORIGINAL, DIET, SALTED, UNSALTED, ZERO)
 - fragrance_flavor: the flavour or fragrance (e.g. VANILLA, LEMON, SALTED MARGARINE)
 - promotion: any promotional OFFER text (e.g. "20% EXTRA FREE", "BUY 1 GET 1"), else null
 - addons: bundled add-ons or free gifts shown on the pack, else null
 - tagline: marketing slogan / descriptor (e.g. "SPREAD FOR BREAD", "LOW FAT"), else null
-- category_type: high-level product category (e.g. Spreads, Condiments, Beverages)
 
 Rules:
 - If a field is not clearly visible, return null for it. Do NOT guess.
@@ -45,7 +46,7 @@ Return ONLY structured data matching the provided schema.`;
 
 const CONF_PROPS = Object.fromEntries(
   ['manufacturer','brand','weight_raw','packaging_type','country_of_origin',
-   'variant_type','fragrance_flavor','promotion','addons','tagline','category_type']
+   'category_type','segment_type','variant_type','fragrance_flavor','promotion','addons','tagline']
   .map(k => [k, { type: 'NUMBER', nullable: true }])
 );
 
@@ -57,12 +58,13 @@ const RESPONSE_SCHEMA = {
     weight_raw:        { type: 'STRING', nullable: true },
     packaging_type:    { type: 'STRING', nullable: true },
     country_of_origin: { type: 'STRING', nullable: true },
+    category_type:     { type: 'STRING', nullable: true },
+    segment_type:      { type: 'STRING', nullable: true },
     variant_type:      { type: 'STRING', nullable: true },
     fragrance_flavor:  { type: 'STRING', nullable: true },
     promotion:         { type: 'STRING', nullable: true },
     addons:            { type: 'STRING', nullable: true },
     tagline:           { type: 'STRING', nullable: true },
-    category_type:     { type: 'STRING', nullable: true },
     confidence: {
       type: 'OBJECT',
       properties: CONF_PROPS,
@@ -78,12 +80,13 @@ interface VLMOutput {
   weight_raw?: string | null;
   packaging_type?: string | null;
   country_of_origin?: string | null;
+  category_type?: string | null;
+  segment_type?: string | null;
   variant_type?: string | null;
   fragrance_flavor?: string | null;
   promotion?: string | null;
   addons?: string | null;
   tagline?: string | null;
-  category_type?: string | null;
   confidence?: Record<string, number | null>;
 }
 
@@ -152,12 +155,13 @@ function vlmValue(v: VLMOutput, key: ImdbFieldKey): string {
     case 'WEIGHT':          return v.weight_raw ?? '';
     case 'PACKAGING_TYPE':  return v.packaging_type ?? '';
     case 'COUNTRY':         return v.country_of_origin ?? '';
-    case 'VARIANT':         return v.variant_type ?? '';
+    case 'CATEGORY_TYPE':   return v.category_type ?? '';
+    case 'SEGMENT_TYPE':    return v.segment_type ?? '';
+    case 'VARIANT_TYPE':    return v.variant_type ?? '';
     case 'FRAGRANCE_FLAVOR':return v.fragrance_flavor ?? '';
     case 'PROMOTION':       return v.promotion ?? '';
     case 'ADDONS':          return v.addons ?? '';
     case 'TAGLINE':         return v.tagline ?? '';
-    case 'TYPE':            return v.category_type ?? '';
     // VLM does not return these — handled by backend (barcode decoder / name generator)
     case 'ITEM_NAME':
     case 'BARCODE':         return '';
@@ -167,8 +171,9 @@ function vlmValue(v: VLMOutput, key: ImdbFieldKey): string {
 const CONF_KEY: Partial<Record<ImdbFieldKey, string>> = {
   MANUFACTURER: 'manufacturer', BRAND: 'brand', WEIGHT: 'weight_raw',
   PACKAGING_TYPE: 'packaging_type', COUNTRY: 'country_of_origin',
-  VARIANT: 'variant_type', FRAGRANCE_FLAVOR: 'fragrance_flavor',
-  PROMOTION: 'promotion', ADDONS: 'addons', TAGLINE: 'tagline', TYPE: 'category_type',
+  CATEGORY_TYPE: 'category_type', SEGMENT_TYPE: 'segment_type',
+  VARIANT_TYPE: 'variant_type', FRAGRANCE_FLAVOR: 'fragrance_flavor',
+  PROMOTION: 'promotion', ADDONS: 'addons', TAGLINE: 'tagline',
 };
 
 function vlmConfidence(v: VLMOutput, key: ImdbFieldKey): number {

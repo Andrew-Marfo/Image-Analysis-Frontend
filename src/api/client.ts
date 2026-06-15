@@ -104,9 +104,9 @@ export interface RecordOut {
   manufacturer: string | null; brand: string | null;
   weight_value: number | null; weight_unit: string | null; weight: string | null;
   packaging_type: string | null; country_of_origin: string | null;
+  category_type: string | null; segment_type: string | null;
   variant_type: string | null; fragrance_flavor: string | null;
   promotion: string | null; addons: string | null; tagline: string | null;
-  category_type: string | null;
   confidence: Record<string, number>; source: Record<string, string>;
   needs_review: boolean; vlm_error: string | null;
   created_at: string; updated_at: string;
@@ -117,7 +117,8 @@ export interface RecordOut {
 const CONFIDENCE_KEY: Record<ImdbFieldKey, string> = {
   ITEM_NAME: 'item_name', BARCODE: 'barcode', MANUFACTURER: 'manufacturer',
   BRAND: 'brand', WEIGHT: 'weight_raw', PACKAGING_TYPE: 'packaging_type',
-  COUNTRY: 'country_of_origin', VARIANT: 'variant_type', TYPE: 'category_type',
+  COUNTRY: 'country_of_origin', CATEGORY_TYPE: 'category_type',
+  SEGMENT_TYPE: 'segment_type', VARIANT_TYPE: 'variant_type',
   FRAGRANCE_FLAVOR: 'fragrance_flavor', PROMOTION: 'promotion',
   ADDONS: 'addons', TAGLINE: 'tagline',
 };
@@ -131,8 +132,9 @@ function recordValue(r: RecordOut, key: ImdbFieldKey): string {
     case 'WEIGHT': return r.weight ?? '';
     case 'PACKAGING_TYPE': return r.packaging_type ?? '';
     case 'COUNTRY': return r.country_of_origin ?? '';
-    case 'VARIANT': return r.variant_type ?? '';
-    case 'TYPE': return r.category_type ?? '';
+    case 'CATEGORY_TYPE': return r.category_type ?? '';
+    case 'SEGMENT_TYPE': return r.segment_type ?? '';
+    case 'VARIANT_TYPE': return r.variant_type ?? '';
     case 'FRAGRANCE_FLAVOR': return r.fragrance_flavor ?? '';
     case 'PROMOTION': return r.promotion ?? '';
     case 'ADDONS': return r.addons ?? '';
@@ -193,8 +195,9 @@ export function fieldToPatch(key: ImdbFieldKey, value: string): Record<string, u
     case 'WEIGHT': return parseWeight(value);
     case 'PACKAGING_TYPE': return { packaging_type: v };
     case 'COUNTRY': return { country_of_origin: v };
-    case 'VARIANT': return { variant_type: v };
-    case 'TYPE': return { category_type: v };
+    case 'CATEGORY_TYPE': return { category_type: v };
+    case 'SEGMENT_TYPE': return { segment_type: v };
+    case 'VARIANT_TYPE': return { variant_type: v };
     case 'FRAGRANCE_FLAVOR': return { fragrance_flavor: v };
     case 'PROMOTION': return { promotion: v };
     case 'ADDONS': return { addons: v };

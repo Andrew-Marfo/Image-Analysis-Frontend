@@ -1,12 +1,12 @@
 /**
  * Core data model for the Image-to-IMDB tool.
  *
- * The IMDB (Item Master Database) record has 13 attributes. The ground-truth
+ * The IMDB (Item Master Database) record has 14 attributes. The ground-truth
  * Excel file is authoritative for column names and order — see `IMDB_COLUMNS`
  * in `src/lib/columns.ts`, which is the single source of truth for export.
  */
 
-/** Stable internal keys for each of the 13 IMDB attributes. */
+/** Stable internal keys for each of the 14 IMDB attributes. */
 export type ImdbFieldKey =
   | 'ITEM_NAME'
   | 'BARCODE'
@@ -15,8 +15,9 @@ export type ImdbFieldKey =
   | 'WEIGHT'
   | 'PACKAGING_TYPE'
   | 'COUNTRY'
-  | 'VARIANT'
-  | 'TYPE'
+  | 'CATEGORY_TYPE'
+  | 'SEGMENT_TYPE'
+  | 'VARIANT_TYPE'
   | 'FRAGRANCE_FLAVOR'
   | 'PROMOTION'
   | 'ADDONS'
