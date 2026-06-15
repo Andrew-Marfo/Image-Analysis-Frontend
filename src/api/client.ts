@@ -1,6 +1,7 @@
 import type { ImdbFieldKey } from '../types/imdb';
 import { IMDB_FIELD_KEYS } from '../lib/columns';
 import { mockExtractionService } from './mockService';
+import { geminiExtractionService, USE_GEMINI } from './geminiService';
 
 const BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '').trim();
 export const USE_REAL_API = BASE_URL.length > 0;
@@ -239,6 +240,35 @@ export async function apiDeleteRecord(recordId: number): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete record');
 }
 
+// ── Dedup & Merge ─────────────────────────────────────────────────────────────
+
+export interface MergeCandidate {
+  record_id: number;
+  duplicate_of: number;
+  score: number;
+  reason: string;
+  matched_fields: string[];
+}
+
+export async function apiRunDedup(sessionId?: number): Promise<MergeCandidate[]> {
+  const params = new URLSearchParams();
+  if (sessionId != null) params.set('session_id', String(sessionId));
+  const res = await apiFetch(`/api/v1/records/dedup?${params.toString()}`, { method: 'POST' });
+  if (!res.ok) throw new Error('Dedup failed');
+  const data = (await res.json()) as { candidates: MergeCandidate[] };
+  return data.candidates;
+}
+
+export async function apiMergeRecords(keepId: number, mergeId: number): Promise<RecordOut> {
+  const res = await apiFetch('/api/v1/records/merge', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keep_id: keepId, merge_id: mergeId }),
+  });
+  if (!res.ok) throw new Error('Merge failed');
+  return res.json() as Promise<RecordOut>;
+}
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export async function apiExportBlob(format: 'csv' | 'xlsx', sessionId?: number): Promise<Blob> {
@@ -277,4 +307,8 @@ class HttpAnalysisApi implements ImageAnalysisApi {
   }
 }
 
-export const api: ImageAnalysisApi = USE_REAL_API ? new HttpAnalysisApi() : mockExtractionService;
+export const api: ImageAnalysisApi = USE_REAL_API
+  ? new HttpAnalysisApi()        // backend FastAPI (saves to DB, S3, etc.)
+  : USE_GEMINI
+    ? geminiExtractionService    // direct Gemini call from browser (no backend)
+    : mockExtractionService;     // offline demo mode

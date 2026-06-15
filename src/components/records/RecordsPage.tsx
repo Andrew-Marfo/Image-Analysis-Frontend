@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  CalendarDays, Download, Pencil, RefreshCw, Search, SlidersHorizontal, Star, Trash2, X,
+  CalendarDays, Download, GitMerge, Loader2, Pencil, RefreshCw, Search, SlidersHorizontal, Star, Trash2, X,
 } from 'lucide-react';
 import {
-  apiDeleteRecord, apiExportBlob, apiGetRecords, type RecordOut,
+  apiDeleteRecord, apiExportBlob, apiGetRecords, apiRunDedup,
+  type MergeCandidate, type RecordOut,
 } from '../../api/client';
 import { useAuth } from '../../store/AuthStore';
 import { RecordEditModal } from './RecordEditModal';
+import { DedupPanel } from './DedupPanel';
 
 type DateRange = 'today' | 'week' | 'month' | 'all';
 
@@ -52,6 +54,8 @@ export function RecordsPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editRecord, setEditRecord] = useState<RecordOut | null>(null);
+  const [dedupCandidates, setDedupCandidates] = useState<MergeCandidate[] | null>(null);
+  const [deduping, setDeduping] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,6 +102,28 @@ export function RecordsPage() {
     setAll((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
   }
 
+  async function handleDedup() {
+    setDeduping(true);
+    setError('');
+    try {
+      const candidates = await apiRunDedup();
+      setDedupCandidates(candidates);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Dedup failed');
+    } finally {
+      setDeduping(false);
+    }
+  }
+
+  function handleMerged(kept: RecordOut, removedId: number) {
+    setAll((prev) => prev.map((r) => (r.id === kept.id ? kept : r)).filter((r) => r.id !== removedId));
+    setDedupCandidates((prev) => prev?.filter((c) => c.record_id !== removedId && c.duplicate_of !== removedId) ?? null);
+  }
+
+  function handleDismissCandidate(recordId: number) {
+    setDedupCandidates((prev) => prev?.filter((c) => c.record_id !== recordId) ?? null);
+  }
+
   async function handleDelete(id: number) {
     setDeleting(true);
     try {
@@ -137,6 +163,17 @@ export function RecordsPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void handleDedup()}
+            disabled={deduping || all.length < 2}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700 shadow-sm transition hover:bg-amber-100 disabled:opacity-50"
+          >
+            {deduping
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <GitMerge className="h-4 w-4" />}
+            {deduping ? 'Scanning…' : 'Find Duplicates'}
+          </button>
           <button
             type="button"
             onClick={() => void handleExport('xlsx')}
@@ -180,6 +217,17 @@ export function RecordsPage() {
           </p>
           <p className="text-xs text-slate-400">{fmtDate(latest.created_at)}</p>
         </div>
+      )}
+
+      {/* Dedup panel */}
+      {dedupCandidates !== null && (
+        <DedupPanel
+          candidates={dedupCandidates}
+          records={all}
+          onMerged={handleMerged}
+          onDismiss={handleDismissCandidate}
+          onClose={() => setDedupCandidates(null)}
+        />
       )}
 
       {/* Filter bar */}
