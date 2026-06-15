@@ -58,6 +58,10 @@ export interface Product {
   error?: string;
   /** True once the user has reviewed/approved this row. */
   reviewed: boolean;
+  /** Backend DB record id (set after successful extraction). */
+  recordId?: number;
+  /** Backend session id (set after successful extraction). */
+  sessionId?: number;
 }
 
 /** The three steps of the upload → preview/edit → export workflow. */

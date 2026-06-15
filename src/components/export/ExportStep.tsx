@@ -10,6 +10,7 @@ import { useAppStore } from '../../store/AppStore';
 import { IMDB_COLUMNS } from '../../lib/columns';
 import { flaggedCount } from '../../lib/confidence';
 import { downloadCsv, downloadXlsx } from '../../lib/export';
+import { apiExportBlob, USE_REAL_API } from '../../api/client';
 import { Button } from '../ui/Button';
 import { DataTablePreview } from './DataTablePreview';
 
@@ -19,11 +20,21 @@ export function ExportStep() {
 
   const totalFlagged = products.reduce((n, p) => n + flaggedCount(p), 0);
   const unreviewed = products.filter((p) => !p.reviewed).length;
+  const useBackend = USE_REAL_API && products.some((p) => p.recordId != null);
+  const sessionId = products.find((p) => p.sessionId != null)?.sessionId;
 
   async function handleCsv() {
     setExporting('csv');
     try {
-      await downloadCsv(products);
+      if (useBackend) {
+        const blob = await apiExportBlob('csv', sessionId);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'imdb-export.csv'; a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        await downloadCsv(products);
+      }
     } finally {
       setExporting(null);
     }
@@ -32,7 +43,15 @@ export function ExportStep() {
   async function handleXlsx() {
     setExporting('xlsx');
     try {
-      await downloadXlsx(products);
+      if (useBackend) {
+        const blob = await apiExportBlob('xlsx', sessionId);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'imdb-export.xlsx'; a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        await downloadXlsx(products);
+      }
     } finally {
       setExporting(null);
     }

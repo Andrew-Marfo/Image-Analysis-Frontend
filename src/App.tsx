@@ -1,24 +1,26 @@
+import { AuthProvider, useAuth } from './store/AuthStore';
+import { NavProvider, useNav } from './store/NavStore';
 import { AppStoreProvider, useAppStore } from './store/AppStore';
 import type { WorkflowStep } from './types/imdb';
+import { USE_REAL_API } from './api/client';
 import { Header } from './components/Header';
 import { Stepper } from './components/Stepper';
 import { UploadStep } from './components/upload/UploadStep';
 import { ReviewStep } from './components/review/ReviewStep';
 import { ExportStep } from './components/export/ExportStep';
+import { AuthPage } from './components/auth/AuthPage';
+import { RecordsPage } from './components/records/RecordsPage';
 
-function Workspace() {
+function UploadWorkspace() {
   const { step, products, setStep } = useAppStore();
   const hasProducts = products.length > 0;
 
-  // Once images are uploaded, review/export become reachable.
   const reachable: WorkflowStep[] = hasProducts
     ? ['upload', 'review', 'export']
     : ['upload'];
 
   return (
     <div className="flex min-h-full flex-col">
-      <Header />
-
       <div className="border-b border-slate-200 bg-white py-4">
         <Stepper current={step} reachable={reachable} onNavigate={setStep} />
       </div>
@@ -28,11 +30,6 @@ function Workspace() {
         {step === 'review' && (hasProducts ? <ReviewStep /> : <EmptyHint />)}
         {step === 'export' && (hasProducts ? <ExportStep /> : <EmptyHint />)}
       </main>
-
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-400">
-        Upload → Preview → Edit → Export · runs on a mock pipeline until the backend is
-        connected
-      </footer>
     </div>
   );
 }
@@ -53,10 +50,48 @@ function EmptyHint() {
   );
 }
 
+function Workspace() {
+  const { page } = useNav();
+  return (
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <Header />
+      {page === 'upload' ? (
+        <AppStoreProvider>
+          <UploadWorkspace />
+        </AppStoreProvider>
+      ) : (
+        <RecordsPage />
+      )}
+    </div>
+  );
+}
+
+function AppRoot() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (USE_REAL_API && !user) {
+    return <AuthPage />;
+  }
+
+  return (
+    <NavProvider>
+      <Workspace />
+    </NavProvider>
+  );
+}
+
 export default function App() {
   return (
-    <AppStoreProvider>
-      <Workspace />
-    </AppStoreProvider>
+    <AuthProvider>
+      <AppRoot />
+    </AuthProvider>
   );
 }

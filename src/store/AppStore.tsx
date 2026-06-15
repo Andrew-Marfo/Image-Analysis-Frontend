@@ -16,7 +16,7 @@ import { emptyField } from '../types/imdb';
 import { IMDB_FIELD_KEYS } from '../lib/columns';
 import { groupFiles, groupKeyForFile } from '../lib/grouping';
 import { uid } from '../lib/id';
-import { api } from '../api/client';
+import { api, apiPatchRecord, fieldToPatch, USE_REAL_API } from '../api/client';
 import type { ExtractionResult } from '../api/client';
 
 interface State {
@@ -128,7 +128,11 @@ function reducer(state: State, action: Action): State {
             const r = action.result.fields[key];
             fields[key] = { value: r.value, confidence: r.confidence, edited: false };
           }
-          return { ...p, fields, status: 'done', error: undefined };
+          return {
+            ...p, fields, status: 'done', error: undefined,
+            recordId: action.result.recordId,
+            sessionId: action.result.sessionId,
+          };
         }),
       };
 
@@ -215,8 +219,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       removeProduct: (productId) => dispatch({ type: 'REMOVE_PRODUCT', productId }),
       removeImage: (productId, imageId) =>
         dispatch({ type: 'REMOVE_IMAGE', productId, imageId }),
-      updateField: (productId, key, value) =>
-        dispatch({ type: 'UPDATE_FIELD', productId, key, value }),
+      updateField: (productId, key, value) => {
+        dispatch({ type: 'UPDATE_FIELD', productId, key, value });
+        if (USE_REAL_API) {
+          const product = state.products.find((p) => p.id === productId);
+          if (product?.recordId != null) {
+            apiPatchRecord(product.recordId, fieldToPatch(key, value)).catch(() => undefined);
+          }
+        }
+      },
       setReviewed: (productId, reviewed) =>
         dispatch({ type: 'SET_REVIEWED', productId, reviewed }),
       setStep: (step) => dispatch({ type: 'SET_STEP', step }),
