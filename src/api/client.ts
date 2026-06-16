@@ -4,8 +4,13 @@ import { mockExtractionService } from './mockService';
 import { geminiExtractionService, USE_GEMINI } from './geminiService';
 import { openaiExtractionService, USE_OPENAI } from './openaiService';
 
+// BASE_URL is intentionally empty when using the Vite dev proxy (all /api/* requests
+// are forwarded to the backend by vite.config.ts). Set VITE_API_BASE_URL only when
+// the frontend is served without the Vite proxy (e.g. a static build against a remote host).
 const BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '').trim();
-export const USE_REAL_API = BASE_URL.length > 0;
+export const USE_REAL_API =
+  BASE_URL.length > 0 ||
+  (import.meta.env.VITE_USE_BACKEND as string | undefined) === 'true';
 
 // ── Token storage ────────────────────────────────────────────────────────────
 
@@ -336,7 +341,8 @@ class HttpAnalysisApi implements ImageAnalysisApi {
     try {
       res = await apiFetch('/api/v1/extract', { method: 'POST', body: form });
     } catch (err) {
-      throw new Error('Could not reach the server. Check that the backend is running.');
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`Network error: ${detail}`);
     }
 
     if (!res.ok) {
