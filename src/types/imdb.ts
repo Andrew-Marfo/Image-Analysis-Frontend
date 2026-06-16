@@ -41,7 +41,7 @@ export interface ProductImage {
   previewUrl: string;
   /** The underlying file, kept for upload to the real backend later. */
   file: File;
-  /** Image-tag id parsed from the filename (e.g. "S221234199"), if any. */
+  /** Angle label derived from the filename suffix (e.g. "Front", "Back", "2"). */
   tag?: string;
 }
 

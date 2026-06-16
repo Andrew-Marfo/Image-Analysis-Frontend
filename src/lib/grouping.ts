@@ -12,6 +12,18 @@ export function groupKeyForFile(fileName: string): string {
   return sep > 0 ? base.slice(0, sep) : base;
 }
 
+/**
+ * Derive a human-friendly angle label from the filename suffix.
+ * "S123_front.jpg" → "Front",  "S123_2.jpg" → "2",  "S123.jpg" → ""
+ */
+export function angleForFile(fileName: string): string {
+  const base = fileName.replace(/\.[^.]+$/, '');
+  const sep = base.search(/[_-]/);
+  if (sep <= 0) return '';
+  const suffix = base.slice(sep + 1).replace(/[_-]+/g, ' ').trim();
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+}
+
 /** Split an array of files into ordered [groupKey, files] buckets. */
 export function groupFiles(files: File[]): Array<[string, File[]]> {
   const buckets = new Map<string, File[]>();

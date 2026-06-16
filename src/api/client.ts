@@ -275,7 +275,7 @@ export async function apiMergeRecords(keepId: number, mergeId: number): Promise<
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-/** All columns the backend can export, in order. */
+/** All columns the backend can export, in ground-truth order. */
 export const BACKEND_EXPORT_COLUMNS: { key: string; label: string }[] = [
   { key: 'RECORD_ID',        label: 'Record ID' },
   { key: 'SESSION_ID',       label: 'Session ID' },
@@ -284,15 +284,15 @@ export const BACKEND_EXPORT_COLUMNS: { key: string; label: string }[] = [
   { key: 'MANUFACTURER',     label: 'Manufacturer' },
   { key: 'BRAND',            label: 'Brand' },
   { key: 'WEIGHT',           label: 'Weight' },
-  { key: 'PACKAGING_TYPE',   label: 'Packaging Type' },
+  { key: 'PACKAGING TYPE',   label: 'Packaging Type' },
   { key: 'COUNTRY',          label: 'Country' },
-  { key: 'CATEGORY_TYPE',    label: 'Category Type' },
-  { key: 'SEGMENT_TYPE',     label: 'Segment Type' },
-  { key: 'VARIANT_TYPE',     label: 'Variant Type' },
+  { key: 'VARIANT',          label: 'Variant' },
+  { key: 'TYPE',             label: 'Type' },
   { key: 'FRAGRANCE_FLAVOR', label: 'Fragrance / Flavor' },
   { key: 'PROMOTION',        label: 'Promotion' },
   { key: 'ADDONS',           label: 'Add-ons' },
   { key: 'TAGLINE',          label: 'Tagline' },
+  { key: 'SEGMENT_TYPE',     label: 'Segment Type' },
   { key: 'NEEDS_REVIEW',     label: 'Needs Review' },
   { key: 'UPLOADED_AT',      label: 'Uploaded At' },
 ];
@@ -331,11 +331,23 @@ class HttpAnalysisApi implements ImageAnalysisApi {
   async extractProduct(images: File[]): Promise<ExtractionResult> {
     const form = new FormData();
     for (const f of images) form.append('files', f);
-    const res = await apiFetch('/api/v1/extract', { method: 'POST', body: form });
-    if (!res.ok) {
-      const body = await res.json();
-      throw new Error(typeof body.detail === 'string' ? body.detail : 'Extraction failed');
+
+    let res: Response;
+    try {
+      res = await apiFetch('/api/v1/extract', { method: 'POST', body: form });
+    } catch (err) {
+      throw new Error('Could not reach the server. Check that the backend is running.');
     }
+
+    if (!res.ok) {
+      let detail = `Extraction failed (HTTP ${res.status})`;
+      try {
+        const body = await res.json() as { detail?: unknown };
+        if (typeof body.detail === 'string') detail = body.detail;
+      } catch { /* body wasn't JSON — keep the default message */ }
+      throw new Error(detail);
+    }
+
     const data = (await res.json()) as { session_id: number; records: RecordOut[]; dedup_candidates: MergeCandidate[] };
     return { ...recordsToResult(data.records), dedupCandidates: data.dedup_candidates ?? [] };
   }

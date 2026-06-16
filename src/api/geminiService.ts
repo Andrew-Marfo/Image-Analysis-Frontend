@@ -18,28 +18,27 @@ export const USE_GEMINI = GEMINI_API_KEY.length > 0;
 
 // ── Prompt (mirrors backend app/services/vlm.py) ─────────────────────────────
 
-const PROMPT = `You are a product-catalog data extractor. Look at the product image and extract
-the following attributes from any visible labels, packaging, and logos:
+const PROMPT = `You are a product-catalog data extractor. Look at the product image(s) — including any text tag/label at the bottom of the image — and extract the following attributes from visible labels, packaging, and logos.
 
-- manufacturer: the company that makes the product (full legal name if shown)
-- brand: the brand name shown on the packaging
-- weight_raw: the net weight/volume EXACTLY as printed (e.g. "250 g", "1.5L")
-- packaging_type: container type (Bottle, Can, Sachet, Box, Pouch, Tub, Glass Jar, etc.)
-- country_of_origin: country shown (e.g. "Made in ..."), else null
-- category_type: high-level product category (e.g. Spreads, Condiments, Beverages)
-- segment_type: market segment shown or implied on pack (e.g. Premium, Value, Economy, Mainstream), else null
-- variant_type: the product variant (e.g. ORIGINAL, DIET, SALTED, UNSALTED, ZERO)
-- fragrance_flavor: the flavour or fragrance (e.g. VANILLA, LEMON, SALTED MARGARINE)
-- promotion: any promotional OFFER text (e.g. "20% EXTRA FREE", "BUY 1 GET 1"), else null
-- addons: bundled add-ons or free gifts shown on the pack, else null
-- tagline: marketing slogan / descriptor (e.g. "SPREAD FOR BREAD", "LOW FAT"), else null
+Fields to extract:
+- manufacturer: full legal company name that makes the product (e.g. UPFIELD, NESTLE, GB FOODS)
+- brand: brand name shown on the packaging (e.g. BLUE BAND, MAGGI, POMO)
+- weight_raw: net weight or volume EXACTLY as printed including unit (e.g. "250G", "500ML", "1.5 KG")
+- packaging_type: physical container — uppercase short form (e.g. TUB, GLASS JAR, SACHET, BOTTLE, CAN, BOX, POUCH, TIN, WRAPPED)
+- country_of_origin: country from "Made in ..." — strip the prefix; null if not shown
+- category_type: short product type as on a shelf tag — uppercase (e.g. MARGARINE, MAYONNAISE, BUTTER, POWDER, BEVERAGE, DETERGENT, TEABAG, TOMATO MIX, TOMATO PASTE, CHOCOLATE, SOAP)
+- segment_type: market segment if clearly shown (e.g. PREMIUM, VALUE, ECONOMY); null if absent
+- variant_type: product variant if shown (e.g. ORIGINAL, LOW FAT, SALTED, DIET, ZERO, 3 IN 1); null if absent
+- fragrance_flavor: flavor or fragrance if shown (e.g. STRAWBERRY, LEMON, ORANGE, GINGER & GARLIC); null if absent
+- promotion: on-pack promotional offer verbatim (e.g. "50% OFF", "BUY 1 GET 1"); null if absent
+- addons: bundled add-ons or free gifts on pack (e.g. "SPOON INCLUDED", "5 FREE ENVELOPE"); null if absent
+- tagline: marketing slogan or descriptor (e.g. "SPREAD FOR BREAD", "LOW FAT", "CHOLESTEROL FREE"); null if absent
 
 Rules:
-- If a field is not clearly visible, return null for it. Do NOT guess.
-- Do NOT attempt to read the barcode number.
-- Do NOT compose a full product/item name — only return the individual fields.
-- For every field, include a confidence score from 0.0 to 1.0 in the
-  "confidence" object keyed by the field name.
+- If a field is not clearly visible, return null. Do NOT guess.
+- Do NOT read or transcribe the barcode number.
+- Do NOT compose a full product/item name — return only the individual fields above.
+- For every field include a confidence score from 0.0 to 1.0 in the "confidence" object keyed by the field name.
 Return ONLY structured data matching the provided schema.`;
 
 // ── JSON Schema for structured output ────────────────────────────────────────

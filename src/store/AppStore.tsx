@@ -14,7 +14,7 @@ import type {
 } from '../types/imdb';
 import { emptyField } from '../types/imdb';
 import { IMDB_FIELD_KEYS } from '../lib/columns';
-import { groupFiles, groupKeyForFile } from '../lib/grouping';
+import { angleForFile, groupFiles, groupKeyForFile } from '../lib/grouping';
 import { uid } from '../lib/id';
 import { api, apiPatchRecord, fieldToPatch, USE_REAL_API } from '../api/client';
 import type { ExtractionResult } from '../api/client';
@@ -25,7 +25,9 @@ interface State {
 }
 
 type Action =
-  | { type: 'ADD_FILES'; files: File[] }
+  | { type: 'ADD_FILES'; files: File[]; angle?: string }
+  | { type: 'ADD_FILES_TO_PRODUCT'; productId: string; files: File[]; angle?: string }
+  | { type: 'SET_IMAGE_ANGLE'; productId: string; imageId: string; angle: string }
   | { type: 'REMOVE_PRODUCT'; productId: string }
   | { type: 'REMOVE_IMAGE'; productId: string; imageId: string }
   | { type: 'SET_STATUS'; productId: string; status: Product['status']; error?: string }
@@ -41,23 +43,23 @@ function emptyFields() {
   return fields;
 }
 
-function makeImage(file: File): ProductImage {
+function makeImage(file: File, angle?: string): ProductImage {
   return {
     id: uid('img'),
     fileName: file.name,
     previewUrl: URL.createObjectURL(file),
     file,
-    tag: groupKeyForFile(file.name),
+    tag: angle || angleForFile(file.name) || undefined,
   };
 }
 
-function addFiles(state: State, files: File[]): State {
+function addFiles(state: State, files: File[], angle?: string): State {
   const groups = groupFiles(files);
   const products = [...state.products];
 
   for (const [groupKey, groupFilesList] of groups) {
     const existing = products.find((p) => p.groupKey === groupKey);
-    const newImages = groupFilesList.map(makeImage);
+    const newImages = groupFilesList.map((f) => makeImage(f, angle));
     if (existing) {
       // Re-add images to an existing group; mark it for re-extraction.
       const idx = products.indexOf(existing);
@@ -83,7 +85,36 @@ function addFiles(state: State, files: File[]): State {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'ADD_FILES':
-      return addFiles(state, action.files);
+      return addFiles(state, action.files, action.angle);
+
+    case 'ADD_FILES_TO_PRODUCT': {
+      return {
+        ...state,
+        products: state.products.map((p) => {
+          if (p.id !== action.productId) return p;
+          return {
+            ...p,
+            images: [...p.images, ...action.files.map((f) => makeImage(f, action.angle))],
+            status: 'pending' as const,
+          };
+        }),
+      };
+    }
+
+    case 'SET_IMAGE_ANGLE': {
+      return {
+        ...state,
+        products: state.products.map((p) => {
+          if (p.id !== action.productId) return p;
+          return {
+            ...p,
+            images: p.images.map((img) =>
+              img.id === action.imageId ? { ...img, tag: action.angle } : img,
+            ),
+          };
+        }),
+      };
+    }
 
     case 'REMOVE_PRODUCT': {
       const product = state.products.find((p) => p.id === action.productId);
@@ -177,7 +208,9 @@ function reducer(state: State, action: Action): State {
 }
 
 interface AppStore extends State {
-  addFiles: (files: File[]) => void;
+  addFiles: (files: File[], angle?: string) => void;
+  addFilesToProduct: (productId: string, files: File[], angle?: string) => void;
+  setImageAngle: (productId: string, imageId: string, angle: string) => void;
   removeProduct: (productId: string) => void;
   removeImage: (productId: string, imageId: string) => void;
   updateField: (productId: string, key: ImdbFieldKey, value: string) => void;
@@ -216,7 +249,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppStore>(
     () => ({
       ...state,
-      addFiles: (files) => dispatch({ type: 'ADD_FILES', files }),
+      addFiles: (files, angle) => dispatch({ type: 'ADD_FILES', files, angle }),
+      addFilesToProduct: (productId, files, angle) =>
+        dispatch({ type: 'ADD_FILES_TO_PRODUCT', productId, files, angle }),
+      setImageAngle: (productId, imageId, angle) =>
+        dispatch({ type: 'SET_IMAGE_ANGLE', productId, imageId, angle }),
       removeProduct: (productId) => dispatch({ type: 'REMOVE_PRODUCT', productId }),
       removeImage: (productId, imageId) =>
         dispatch({ type: 'REMOVE_IMAGE', productId, imageId }),

@@ -23,7 +23,7 @@ export function UploadStep() {
 
   return (
     <div className="space-y-6">
-      <Dropzone onFiles={addFiles} />
+      <Dropzone onFiles={(files, angle) => addFiles(files, angle)} />
 
       {products.length > 0 && (
         <>
