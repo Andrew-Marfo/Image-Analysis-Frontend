@@ -97,7 +97,6 @@ function fileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // strip the "data:<mime>;base64," prefix
       resolve(result.split(',')[1] ?? '');
     };
     reader.onerror = reject;
@@ -162,7 +161,6 @@ function vlmValue(v: VLMOutput, key: ImdbFieldKey): string {
     case 'PROMOTION':       return v.promotion ?? '';
     case 'ADDONS':          return v.addons ?? '';
     case 'TAGLINE':         return v.tagline ?? '';
-    // VLM does not return these — handled by backend (barcode decoder / name generator)
     case 'ITEM_NAME':
     case 'BARCODE':         return '';
   }

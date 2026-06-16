@@ -365,7 +365,7 @@ function buildDirectService(): ImageAnalysisApi {
   if (USE_GEMINI)  providers.push(geminiExtractionService);
   providers.push(mockExtractionService);
   return providers.length === 1
-    ? providers[0]                          // single provider — skip wrapper
+    ? providers[0]
     : new FallbackExtractionService(providers);
 }
 

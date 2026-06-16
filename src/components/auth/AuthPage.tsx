@@ -6,7 +6,7 @@ type Mode = 'login' | 'register';
 
 const FEATURES = [
   { icon: Upload, label: 'Upload product images', desc: 'Multiple angles per product' },
-  { icon: Zap, label: 'AI extraction', desc: 'Gemini Flash reads all 13 IMDB fields' },
+  { icon: Zap, label: 'AI extraction', desc: 'AI reads all 14 IMDB fields' },
   { icon: TableProperties, label: 'Browse your records', desc: 'Filter by brand, category, date' },
   { icon: ShieldCheck, label: 'Per-user isolation', desc: 'Only your records, always' },
 ];
