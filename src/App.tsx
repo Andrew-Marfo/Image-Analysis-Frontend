@@ -9,6 +9,7 @@ import { UploadStep } from './components/upload/UploadStep';
 import { ReviewStep } from './components/review/ReviewStep';
 import { ExportStep } from './components/export/ExportStep';
 import { AuthPage } from './components/auth/AuthPage';
+import { AuthTransition } from './components/auth/AuthTransition';
 import { RecordsPage } from './components/records/RecordsPage';
 
 function UploadWorkspace() {
@@ -67,7 +68,7 @@ function Workspace() {
 }
 
 function AppRoot() {
-  const { user, loading } = useAuth();
+  const { user, loading, transitioning, transitionMessage } = useAuth();
 
   if (loading) {
     return (
@@ -75,6 +76,10 @@ function AppRoot() {
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
       </div>
     );
+  }
+
+  if (transitioning) {
+    return <AuthTransition message={transitionMessage} />;
   }
 
   if (USE_REAL_API && !user) {

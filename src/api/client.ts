@@ -2,6 +2,7 @@ import type { ImdbFieldKey } from '../types/imdb';
 import { IMDB_FIELD_KEYS } from '../lib/columns';
 import { mockExtractionService } from './mockService';
 import { geminiExtractionService, USE_GEMINI } from './geminiService';
+import { openaiExtractionService, USE_OPENAI } from './openaiService';
 
 const BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '').trim();
 export const USE_REAL_API = BASE_URL.length > 0;
@@ -340,8 +341,34 @@ class HttpAnalysisApi implements ImageAnalysisApi {
   }
 }
 
+// ── Direct-browser fallback chain: OpenAI → Gemini → Mock ────────────────────
+
+class FallbackExtractionService implements ImageAnalysisApi {
+  constructor(private readonly providers: ImageAnalysisApi[]) {}
+
+  async extractProduct(images: File[]): Promise<ExtractionResult> {
+    let lastErr: Error = new Error('No extraction providers configured');
+    for (const provider of this.providers) {
+      try {
+        return await provider.extractProduct(images);
+      } catch (err) {
+        lastErr = err instanceof Error ? err : new Error(String(err));
+      }
+    }
+    throw lastErr;
+  }
+}
+
+function buildDirectService(): ImageAnalysisApi {
+  const providers: ImageAnalysisApi[] = [];
+  if (USE_OPENAI)  providers.push(openaiExtractionService);
+  if (USE_GEMINI)  providers.push(geminiExtractionService);
+  providers.push(mockExtractionService);
+  return providers.length === 1
+    ? providers[0]                          // single provider — skip wrapper
+    : new FallbackExtractionService(providers);
+}
+
 export const api: ImageAnalysisApi = USE_REAL_API
-  ? new HttpAnalysisApi()        // backend FastAPI (saves to DB, S3, etc.)
-  : USE_GEMINI
-    ? geminiExtractionService    // direct Gemini call from browser (no backend)
-    : mockExtractionService;     // offline demo mode
+  ? new HttpAnalysisApi()    // backend FastAPI (saves to DB, S3, etc.)
+  : buildDirectService();    // browser-direct: OpenAI → Gemini → Mock
