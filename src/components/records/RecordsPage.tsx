@@ -41,7 +41,7 @@ function todayFull(): string {
 }
 
 export function RecordsPage() {
-  const { user } = useAuth();
+  useAuth();
   const [all, setAll] = useState<RecordOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

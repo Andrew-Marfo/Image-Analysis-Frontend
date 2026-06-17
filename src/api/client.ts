@@ -362,7 +362,8 @@ class HttpAnalysisApi implements ImageAnalysisApi {
 // ── Direct-browser fallback chain: OpenAI → Gemini → Mock ────────────────────
 
 class FallbackExtractionService implements ImageAnalysisApi {
-  constructor(private readonly providers: ImageAnalysisApi[]) {}
+  private readonly providers: ImageAnalysisApi[];
+  constructor(providers: ImageAnalysisApi[]) { this.providers = providers; }
 
   async extractProduct(images: File[]): Promise<ExtractionResult> {
     let lastErr: Error = new Error('No extraction providers configured');

@@ -14,7 +14,7 @@ import type {
 } from '../types/imdb';
 import { emptyField } from '../types/imdb';
 import { IMDB_FIELD_KEYS } from '../lib/columns';
-import { angleForFile, groupFiles, groupKeyForFile } from '../lib/grouping';
+import { angleForFile, groupFiles } from '../lib/grouping';
 import { uid } from '../lib/id';
 import { api, apiPatchRecord, fieldToPatch, USE_REAL_API } from '../api/client';
 import type { ExtractionResult } from '../api/client';
